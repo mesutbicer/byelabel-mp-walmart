@@ -37,7 +37,25 @@ Walmart Marketplace API Service, Walmart mağazanızı yönetmenizi sağlayan bi
 | Ortam | URL |
 |-------|-----|
 | **Development** | `http://localhost:8082` |
-| **Production** | `http://walmart.byelabel.internal` |
+| **Production** | `https://walmart.byelabel.internal/mp-walmart` |
+| **Production (ALB)** | `https://internal-byelabel-main-internal-lb-300788144.us-east-1.elb.amazonaws.com/mp-walmart` |
+
+> ⚠️ **VPN Gerekli**: Production URL'lerine erişim için VPN bağlantısı gereklidir.
+
+> ⚠️ **SSL Uyarısı**: SSL sertifikası `byelabel.com` için düzenlenmiştir. Tarayıcıda "Not Secure" uyarısı alabilirsiniz. Postman kullanıyorsanız Settings → General → SSL certificate verification → **OFF** yapın.
+
+### 1.4 URL Yapısı
+
+Production ortamında tüm endpoint'ler `/mp-walmart` prefix'i ile erişilir:
+
+| Local | Production |
+|-------|------------|
+| `/health-check` | `/mp-walmart/health-check` |
+| `/swagger` | `/mp-walmart/swagger` |
+| `/api/Auth` | `/mp-walmart/api/Auth` |
+| `/api/Order/...` | `/mp-walmart/api/Order/...` |
+
+Bu prefix ALB routing için kullanılır ve uygulama tarafındaki middleware ile otomatik olarak kaldırılır.
 
 ---
 
@@ -45,38 +63,12 @@ Walmart Marketplace API Service, Walmart mağazanızı yönetmenizi sağlayan bi
 
 ### 2.1 Swagger'a Erişim
 
-Swagger UI, tüm API endpoint'lerini görüntülemenizi ve test etmenizi sağlar.
+| Ortam | URL |
+|-------|-----|
+| **Local** | `http://localhost:8082/swagger` |
+| **Production** | `https://walmart.byelabel.internal/mp-walmart/swagger` |
 
-**URL**: `http://localhost:8082/swagger`
-
-### 2.2 Swagger Arayüzü
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ Walmart Marketplace API Service                                 │
-│ Version: 1.0.0                                                  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│ ▼ Auth - Kullanıcı hesap yönetimi işlemleri                    │
-│   GET  /health-check       Health Check                         │
-│   GET  /log-test           Log Test                             │
-│   POST /api/Auth           Create or Update Account             │
-│   DELETE /api/Auth/{...}   Delete Account                       │
-│                                                                 │
-│ ▼ Order - Sipariş yönetimi işlemleri                           │
-│   GET  /api/Order/{...}    Siparişleri getir                   │
-│   GET  /api/Order/Get...   Siparişleri getir (alternatif)      │
-│   GET  /api/Order/Get...   Tek sipariş getir                   │
-│   POST /api/Order/Dis...   Kargo bildirimi                     │
-│                                                                 │
-│ ▼ Health - Servis sağlık kontrolü                              │
-│   GET  /health-check       Health Check                         │
-│   GET  /log-test           Log Test                             │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 2.3 Endpoint Test Etme
+### 2.2 Endpoint Test Etme
 
 1. İlgili endpoint'e tıklayın
 2. **"Try it out"** butonuna basın
@@ -84,20 +76,26 @@ Swagger UI, tüm API endpoint'lerini görüntülemenizi ve test etmenizi sağlar
 4. **"Execute"** butonuna basın
 5. Yanıtı inceleyin
 
+### 2.3 Postman Collection
+
+Tüm endpoint'leri Postman'da test etmek için hazır collection mevcuttur:
+
+```
+docs/Walmart-Marketplace-API.postman_collection.json
+```
+
+Postman'a import edin ve `baseUrl` değişkenini ortamınıza göre ayarlayın.
+
 ---
 
 ## 3. Hesap Yönetimi
 
 ### 3.1 Yeni Hesap Oluşturma
 
-Walmart mağazanızı sisteme entegre etmek için hesap oluşturmanız gerekir.
-
-**Swagger'da**: `Auth > POST /api/Auth > Try it out`
-
 #### Request
 
 ```http
-POST /api/Auth
+POST /mp-walmart/api/Auth
 Content-Type: application/json
 
 {
@@ -112,12 +110,12 @@ Content-Type: application/json
 
 ```json
 {
-  "Id": 1,
-  "UserId": "byel-account-123",
-  "StoreId": "byel-store-456",
-  "ClientId": "your-walmart-client-id",
-  "ClientSecret": "your-walmart-client-secret",
-  "IsDeleted": false
+  "id": 1,
+  "userId": "byel-account-123",
+  "storeId": "byel-store-456",
+  "clientId": "your-walmart-client-id",
+  "clientSecret": "your-walmart-client-secret",
+  "isDeleted": false
 }
 ```
 
@@ -132,12 +130,10 @@ Content-Type: application/json
 
 ### 3.2 Hesap Silme (Soft Delete)
 
-**Swagger'da**: `Auth > DELETE /api/Auth/{accountId}/{storeId} > Try it out`
-
 #### Request
 
 ```http
-DELETE /api/Auth/byel-account-123/byel-store-456
+DELETE /mp-walmart/api/Auth/byel-account-123/byel-store-456
 ```
 
 #### Response
@@ -146,19 +142,24 @@ DELETE /api/Auth/byel-account-123/byel-store-456
 "byel-account-123"
 ```
 
-> ⚠️ **Not**: Bu işlem kullanıcıyı kalıcı olarak silmez. Sadece `IsDeleted` flag'ini `true` yapar. Geçmiş veriler korunur.
+> ⚠️ **Not**: Bu işlem kullanıcıyı kalıcı olarak silmez. Sadece `IsDeleted` flag'ini `true` yapar.
 
 ### 3.3 Health Check
 
-Servisin çalışır durumda olduğunu kontrol edin.
-
-**Swagger'da**: `Health > GET /health-check > Try it out`
-
 ```http
-GET /health-check
+GET /mp-walmart/health-check
 ```
 
 **Response**: `200 OK` (boş body)
+
+**curl ile test:**
+```bash
+# Local
+curl http://localhost:8082/health-check
+
+# Production (VPN gerekli)
+curl -k https://walmart.byelabel.internal/mp-walmart/health-check
+```
 
 ---
 
@@ -166,14 +167,10 @@ GET /health-check
 
 ### 4.1 Siparişleri Getirme
 
-Belirli bir tarihten sonra güncellenen tüm siparişleri çekin.
-
-**Swagger'da**: `Order > GET /api/Order/GetOrdersAfterDate/{...} > Try it out`
-
 #### Request
 
 ```http
-GET /api/Order/GetOrdersAfterDate/{accountId}/{storeId}/{lastUpdateDate}
+GET /mp-walmart/api/Order/GetOrdersAfterDate/{accountId}/{storeId}/{lastUpdateDate}
 ```
 
 **Parametreler:**
@@ -184,7 +181,7 @@ GET /api/Order/GetOrdersAfterDate/{accountId}/{storeId}/{lastUpdateDate}
 | storeId | string | ByeLabel mağaza ID | `byel-store-456` |
 | lastUpdateDate | number | Unix timestamp (ms) | `1704067200000` |
 
-> 💡 **İpucu**: `lastUpdateDate` için şu anki zamanın Unix timestamp değerini kullanın: `Date.now()`
+> 💡 **İpucu**: İlk çağrıda eğer kullanıcının hiç siparişi yoksa, Walmart API'den son 30 günün siparişleri otomatik olarak senkronize edilir.
 
 #### Response
 
@@ -213,71 +210,34 @@ GET /api/Order/GetOrdersAfterDate/{accountId}/{storeId}/{lastUpdateDate}
         "lineNumber": "1",
         "item": {
           "productName": "Widget A",
-          "sku": "WGT-001",
-          "imageUrl": "https://..."
+          "sku": "WGT-001"
         },
         "quantity": 2,
         "unitPrice": 19.99,
-        "totalPrice": 39.98,
         "status": "Created"
       }
-    ],
-    "totalAmount": 39.98,
-    "status": "awaiting"
+    ]
   }
 ]
 ```
 
-### 4.2 İlk Senkronizasyon
-
-Hesap oluşturulduktan sonra ilk sipariş çağrısında:
-
-1. Sistem otomatik olarak **son 30 günün siparişlerini** Walmart'tan çeker
-2. Veritabanına kaydeder
-3. Sonraki çağrılarda sadece güncellenen siparişler döner
-
-### 4.3 Tek Sipariş Getirme
-
-Belirli bir siparişin güncel durumunu Walmart API'den çekin.
-
-**Swagger'da**: `Order > GET /api/Order/GetOrderFromApiByPurchaseOrderId/{...} > Try it out`
+### 4.2 Tek Sipariş Getirme
 
 #### Request
 
 ```http
-GET /api/Order/GetOrderFromApiByPurchaseOrderId/{accountId}/{storeId}/{purchaseOrderId}
+GET /mp-walmart/api/Order/GetOrderFromApiByPurchaseOrderId/{accountId}/{storeId}/{purchaseOrderId}
 ```
 
-**Parametreler:**
+Bu endpoint Walmart API'den güncel sipariş bilgisini çeker ve veritabanına kaydeder/günceller.
 
-| Parametre | Tip | Açıklama | Örnek |
-|-----------|-----|----------|-------|
-| accountId | string | ByeLabel hesap ID | `byel-account-123` |
-| storeId | string | ByeLabel mağaza ID | `byel-store-456` |
-| purchaseOrderId | string | Walmart sipariş numarası | `1234567890123` |
+### 4.3 Sipariş Durumları
 
-#### Response
-
-```json
-{
-  "accountId": "byel-account-123",
-  "purchaseOrderId": "1234567890123",
-  "customerOrderId": "C001234567",
-  "orderDate": "2024-01-15T10:30:00.000Z",
-  "shippingInfo": { ... },
-  "orderLines": [ ... ],
-  "totalAmount": 39.98,
-  "status": "awaiting"
-}
-```
-
-### 4.4 Sipariş Durumları
-
-| Durum | Açıklama | Walmart Durumları |
-|-------|----------|-------------------|
-| `awaiting` | Beklemede | Created, Acknowledged |
-| `shipped` | Kargoya verildi | Shipped |
-| `cancelled` | İptal edildi | Cancelled |
+| Durum | Açıklama |
+|-------|----------|
+| `awaiting` | Sipariş beklemede (Created, Acknowledged) |
+| `shipped` | Sipariş kargoya verildi |
+| `cancelled` | Sipariş iptal edildi |
 
 ---
 
@@ -285,14 +245,10 @@ GET /api/Order/GetOrderFromApiByPurchaseOrderId/{accountId}/{storeId}/{purchaseO
 
 ### 5.1 Kargo Gönderimi Bildirme
 
-Siparişi Walmart'a kargoya verildi olarak bildirin.
-
-**Swagger'da**: `Order > POST /api/Order/DispatchOrder > Try it out`
-
 #### Request
 
 ```http
-POST /api/Order/DispatchOrder
+POST /mp-walmart/api/Order/DispatchOrder
 Content-Type: application/json
 
 {
@@ -317,26 +273,9 @@ Content-Type: application/json
 
 #### Bilinen Kargo Firmaları (trackingNumber gerekli)
 
-| Firma | carrierName Değeri |
-|-------|-------------------|
-| UPS | `UPS` |
-| FedEx | `FedEx` |
-| USPS | `USPS` |
-| DHL | `DHL` |
-| OnTrac | `OnTrac` |
-| LS (LaserShip) | `LS` |
-| Asendia | `Asendia` |
-| China Post | `China Post` |
-| YunExpress | `YunExpress` |
-| 4PX | `4PX` |
-| Canada Post | `Canada Post` |
-| Japan Post | `Japan Post` |
-| Deutsche Post | `Deutsche Post` |
-| SF Express | `SF Express` |
+UPS, FedEx, USPS, DHL, OnTrac, LS (LaserShip), Asendia, China Post, YunExpress, 4PX, Canada Post, Japan Post, Deutsche Post, SF Express ve daha fazlası.
 
 #### Bilinmeyen Kargo Firmaları (trackingURL gerekli)
-
-Yukarıdaki listede olmayan kargo firmaları için:
 
 ```json
 {
@@ -346,39 +285,23 @@ Yukarıdaki listede olmayan kargo firmaları için:
 }
 ```
 
-### 5.3 Shipping Method Kodları
+### 5.3 Method Kodları
 
 | Kod | Açıklama |
 |-----|----------|
 | `Standard` | Standart kargo (3-5 iş günü) |
 | `Express` | Hızlı kargo (1-2 iş günü) |
 | `OneDay` | Bir günde teslimat |
-| `Freight` | Yük taşımacılığı (büyük ürünler) |
+| `Freight` | Yük taşımacılığı |
 | `WhiteGlove` | Özel teslimat hizmeti |
 | `Value` | Ekonomik kargo (5-8 iş günü) |
 
-### 5.4 Kargo Bildirimi Kuralları
+### 5.4 Kurallar
 
-| Kargo Firması Tipi | Gerekli Alan |
-|-------------------|--------------|
+| Kargo Tipi | Gerekli Alan |
+|------------|--------------|
 | Bilinen (UPS, FedEx, vb.) | `trackingNumber` zorunlu |
 | Bilinmeyen | `trackingURL` zorunlu |
-
-> ⚠️ **Önemli**: Her iki koşuldan biri sağlanmazsa hata alırsınız:
-> ```json
-> {
->   "name": "BaseException",
->   "message": "Known Carrier Name - TrackingNumber or Unknown Carrier Name - Tracking Url pairs are required."
-> }
-> ```
-
-### 5.5 Başarılı Kargo Bildirimi
-
-```http
-HTTP/1.1 200 OK
-```
-
-Boş body ile 200 OK döner. Sipariş durumu Walmart'ta "Shipped" olarak güncellenir.
 
 ---
 
@@ -395,45 +318,30 @@ Boş body ile 200 OK döner. Sipariş durumu Walmart'ta "Shipped" olarak güncel
 ### 6.2 Özel Hatalar
 
 #### UserNotFoundException
-
 ```json
 {
   "name": "UserNotFoundException",
   "message": "User Not Found."
 }
 ```
-
 **Neden**: Belirtilen accountId/storeId ile kullanıcı bulunamadı veya silinmiş.
 
-**Çözüm**: Doğru accountId/storeId kullandığınızdan emin olun veya yeni hesap oluşturun.
+> **Not**: C# uyumluluğu için bu hata HTTP 400 döner (404 değil).
 
 #### BaseException
-
 ```json
 {
   "name": "BaseException",
-  "message": "Error description here"
+  "message": "Error description"
 }
 ```
 
-**Neden**: Genel hata - mesaja bakarak anlayabilirsiniz.
-
-**Yaygın Nedenler:**
-- `"Access Token not reacheable"`: Walmart credentials hatalı
-- `"Walmart store is in use by another user."`: Mağaza başka hesapta kayıtlı
-- `"Order Not Found"`: Sipariş bulunamadı
-- `"Partner is TERMINATED"`: Walmart hesabı kapatılmış
-
-### 6.3 Walmart API Hataları
-
-```json
-{
-  "name": "BaseException",
-  "message": "{\"errors\":[{\"code\":\"INVALID_REQUEST_CONTENT\",\"description\":\"...\"}]}"
-}
-```
-
-Walmart API'den gelen hatalar JSON formatında mesaj içinde yer alır.
+**Yaygın Mesajlar:**
+- `"Access Token not reacheable"` → Walmart credentials hatalı
+- `"Walmart store is in use by another user."` → Mağaza başka hesapta
+- `"Order Not Found"` → Sipariş bulunamadı
+- `"Partner is TERMINATED"` → Walmart hesabı kapatılmış
+- `"Known Carrier Name - TrackingNumber or Unknown Carrier Name - Tracking Url pairs are required."` → Kargo bilgisi eksik
 
 ---
 
@@ -441,26 +349,15 @@ Walmart API'den gelen hatalar JSON formatında mesaj içinde yer alır.
 
 ### 7.1 Sipariş Senkronizasyonu
 
-1. **İlk Kurulum**: Hesap oluşturduktan sonra ilk sipariş çağrısı yapın
-2. **Düzenli Polling**: 10-15 dakikada bir sipariş güncellemesi çekin
-3. **lastUpdateDate**: Son başarılı senkronizasyon tarihini saklayın
-
-```javascript
-// Örnek: Son senkronizasyon tarihini kaydetme
-let lastSync = Date.now();
-
-async function syncOrders() {
-  const orders = await fetch(`/api/Order/GetOrdersAfterDate/${accountId}/${storeId}/${lastSync}`);
-  lastSync = Date.now();
-  return orders;
-}
-```
+1. **İlk Kurulum**: Hesap oluşturduktan sonra ilk sipariş çağrısı yapın (son 30 gün otomatik çekilir)
+2. **Otomatik Sync**: Scheduled job her 10 dakikada bir sipariş güncellemesi yapar
+3. **Manuel Sync**: `lastUpdateDate` parametresi ile belirli tarihten sonraki siparişleri çekin
 
 ### 7.2 Hata Yönetimi
 
 ```javascript
 try {
-  const response = await fetch('/api/Order/DispatchOrder', {
+  const response = await fetch('/mp-walmart/api/Order/DispatchOrder', {
     method: 'POST',
     body: JSON.stringify(shippingData)
   });
@@ -470,10 +367,8 @@ try {
     
     if (error.name === 'UserNotFoundException') {
       // Kullanıcıyı yeniden authorize et
-      await reauthorize();
     } else if (error.message.includes('Partner is TERMINATED')) {
-      // Walmart hesabı kapatılmış - kullanıcıyı bilgilendir
-      notifyUser('Walmart hesabınız kapatılmış');
+      // Walmart hesabı kapatılmış
     }
   }
 } catch (e) {
@@ -481,49 +376,23 @@ try {
 }
 ```
 
-### 7.3 Rate Limiting
-
-- Walmart API'nin rate limit'leri vardır
-- Çok sık istek yapmaktan kaçının
-- Hata durumunda exponential backoff uygulayın
-
-```javascript
-async function fetchWithRetry(url, maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return response;
-      
-      if (response.status === 429) { // Too Many Requests
-        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
-        await sleep(delay);
-        continue;
-      }
-      
-      throw new Error(`HTTP ${response.status}`);
-    } catch (e) {
-      if (i === maxRetries - 1) throw e;
-    }
-  }
-}
-```
-
-### 7.4 Güvenlik
+### 7.3 Güvenlik
 
 - Client Secret'ı asla frontend'de saklamayın
-- HTTPS kullanın (production'da zorunlu)
+- Production ortamında HTTPS zorunludur (ALB üzerinden)
 - API key'leri environment variable'larda tutun
+- VPN bağlantısı olmadan production API'ye erişilemez
 
 ---
 
 ## Ek Kaynaklar
 
-- **Swagger UI**: `http://localhost:8082/swagger`
-- **Swagger JSON**: `http://localhost:8082/swagger-json`
-- **Health Check**: `http://localhost:8082/health-check`
+- **Swagger UI (Local)**: `http://localhost:8082/swagger`
+- **Swagger UI (Production)**: `https://walmart.byelabel.internal/mp-walmart/swagger`
+- **Postman Collection**: `docs/Walmart-Marketplace-API.postman_collection.json`
 - **Mimari Döküman**: [ARCHITECTURE.md](./ARCHITECTURE.md)
 - **Kurulum Rehberi**: [INSTALLATION.md](./INSTALLATION.md)
 
 ---
 
-*Bu kullanım rehberi, Walmart Service API'sinin nasıl kullanılacağını açıklamaktadır. Güncellemeler ve sorular için development ekibi ile iletişime geçin.*
+*Bu kullanım rehberi, Walmart Service API'sinin nasıl kullanılacağını açıklamaktadır.*
