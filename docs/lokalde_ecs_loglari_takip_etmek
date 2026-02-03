@@ -1,0 +1,5 @@
+aws logs tail /ecs/mp-walmart-service --since 5m --follow | grep "Mapped\|Bootstrap\|Starting Nest"
+
+
+--since 5m son 5 dakikadaki logları getirir, --follow canlı takip eder. Ctrl+C ile çıkarsın.
+aws logs tail /ecs/mp-walmart-service --since 5m --follow

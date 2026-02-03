@@ -1,0 +1,240 @@
+mesutbicer@ip-192-168-1-101 walmart-nestjs % aws elbv2 create-target-group \
+  --name mp-walmart-tg \
+  --protocol HTTP \
+  --port 8082 \
+  --vpc-id vpc-0082e348d24af76bc \
+  --target-type ip \
+  --health-check-path /health-check
+{
+    "TargetGroups": [
+        {
+            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:140023362064:targetgroup/mp-walmart-tg/321b47f1173807de",
+            "TargetGroupName": "mp-walmart-tg",
+            "Protocol": "HTTP",
+            "Port": 8082,
+            "VpcId": "vpc-0082e348d24af76bc",
+            "HealthCheckProtocol": "HTTP",
+            "HealthCheckPort": "traffic-port",
+            "HealthCheckEnabled": true,
+            "HealthCheckIntervalSeconds": 30,
+            "HealthCheckTimeoutSeconds": 5,
+            "HealthyThresholdCount": 5,
+            "UnhealthyThresholdCount": 2,
+            "HealthCheckPath": "/health-check",
+            "Matcher": {
+                "HttpCode": "200"
+            },
+            "TargetType": "ip",
+            "ProtocolVersion": "HTTP1",
+            "IpAddressType": "ipv4"
+        }
+    ]
+}
+(END)
+            "HealthyThresholdCount": 5,
+            "UnhealthyThresholdCount": 2,
+            "HealthCheckPath": "/health-check",
+            "Matcher": {
+                "HttpCode": "200"
+            },
+            "TargetType": "ip",
+            "ProtocolVersion": "HTTP1",
+            "IpAddressType": "ipv4"
+        }
+    ]
+}
+(END)
+mesutbicer@ip-192-168-1-101 walmart-nestjs %
+
+
+
+
+mesutbicer@ip-192-168-1-101 walmart-nestjs % aws elbv2 create-rule \
+  --listener-arn arn:aws:elasticloadbalancing:us-east-1:140023362064:listener/app/byelabel-main-internal-lb/56cba463d09925f9/a8ae3c5089ce4157 \
+  --conditions Field=path-pattern,Values='/mp-walmart/*' \
+  --priority 10 \
+  --actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:140023362064:targetgroup/mp-walmart-tg/321b47f1173807de
+{
+    "Rules": [
+        {
+            "RuleArn": "arn:aws:elasticloadbalancing:us-east-1:140023362064:listener-rule/app/byelabel-main-internal-lb/56cba463d09925f9/a8ae3c5089ce4157/ab0fa8b0f242d71f",
+            "Priority": "10",
+            "Conditions": [
+                {
+                    "Field": "path-pattern",
+                    "Values": [
+                        "/mp-walmart/*"
+                    ],
+                    "PathPatternConfig": {
+                        "Values": [
+                            "/mp-walmart/*"
+                        ]
+                    }
+                }
+            ],
+            "Actions": [
+                {
+                    "Type": "forward",
+                    "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:140023362064:targetgroup/mp-walmart-tg/321b47f1173807de",
+                    "ForwardConfig": {
+                        "TargetGroups": [
+                            {
+                                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:140023362064:targetgroup/mp-walmart-tg/321b47f1173807de",
+                                "Weight": 1
+                            }
+                        ],
+                        "TargetGroupStickinessConfig": {
+                            "Enabled": false
+                        }
+                    }
+                }
+            ],
+            "IsDefault": false,
+            "Transforms": []
+        }
+    ]
+}
+(END)
+                        ],
+                        "TargetGroupStickinessConfig": {
+                            "Enabled": false
+                        }
+                    }
+                }
+            ],
+            "IsDefault": false,
+            "Transforms": []
+        }
+    ]
+}
+(END)
+mesutbicer@ip-192-168-1-101 walmart-nestjs %
+
+
+
+
+
+
+mesutbicer@ip-192-168-1-101 walmart-nestjs % aws ecs create-service \
+  --cluster byelabel \
+  --service-name mp-walmart-service \
+  --task-definition mp-walmart-service \
+  --desired-count 1 \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[subnet-0ce9b75e525a22d92,subnet-08015c4fa9c523aca],securityGroups=[sg-0f30b8d2a6d6b6a8a],assignPublicIp=ENABLED}" \
+  --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:us-east-1:140023362064:targetgroup/mp-walmart-tg/321b47f1173807de,containerName=mp-walmart-service,containerPort=8082"
+
+{
+    "service": {
+        "serviceArn": "arn:aws:ecs:us-east-1:140023362064:service/byelabel/mp-walmart-service",
+        "serviceName": "mp-walmart-service",
+        "clusterArn": "arn:aws:ecs:us-east-1:140023362064:cluster/byelabel",
+        "loadBalancers": [
+            {
+                "targetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:140023362064:targetgroup/mp-walmart-tg/321b47f1173807de",
+                "containerName": "mp-walmart-service",
+                "containerPort": 8082
+            }
+        ],
+        "serviceRegistries": [],
+        "status": "ACTIVE",
+        "desiredCount": 1,
+        "runningCount": 0,
+        "pendingCount": 0,
+        "launchType": "FARGATE",
+        "platformVersion": "LATEST",
+        "platformFamily": "Linux",
+        "taskDefinition": "arn:aws:ecs:us-east-1:140023362064:task-definition/mp-walmart-service:1",
+        "deploymentConfiguration": {
+            "deploymentCircuitBreaker": {
+                "enable": false,
+                "rollback": false
+            },
+            "maximumPercent": 200,
+            "minimumHealthyPercent": 100,
+            "strategy": "ROLLING",
+            "bakeTimeInMinutes": 0
+        },
+        "deployments": [
+            {
+                "id": "ecs-svc/8174023706483223445",
+                "status": "PRIMARY",
+                "taskDefinition": "arn:aws:ecs:us-east-1:140023362064:task-definition/mp-walmart-service:1",
+                "desiredCount": 0,
+                "pendingCount": 0,
+                "runningCount": 0,
+                "failedTasks": 0,
+                "createdAt": "2026-02-02T23:55:11.807000+03:00",
+                "updatedAt": "2026-02-02T23:55:11.807000+03:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-0ce9b75e525a22d92",
+                            "subnet-08015c4fa9c523aca"
+                        ],
+                        "securityGroups": [
+                            "sg-0f30b8d2a6d6b6a8a"
+                        ],
+                        "assignPublicIp": "ENABLED"
+                    }
+                },
+                "rolloutState": "IN_PROGRESS",
+                "rolloutStateReason": "ECS deployment ecs-svc/8174023706483223445 in progress."
+            }
+        ],
+        "roleArn": "arn:aws:iam::140023362064:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+        "events": [],
+        "createdAt": "2026-02-02T23:55:11.807000+03:00",
+        "currentServiceRevisions": [
+            {
+                "arn": "arn:aws:ecs:us-east-1:140023362064:service-revision/byelabel/mp-walmart-service/8174023706483223445",
+                "requestedTaskCount": 0,
+                "runningTaskCount": 0,
+                "pendingTaskCount": 0
+            }
+        ],
+        "placementConstraints": [],
+        "placementStrategy": [],
+        "networkConfiguration": {
+            "awsvpcConfiguration": {
+                "subnets": [
+                    "subnet-0ce9b75e525a22d92",
+                    "subnet-08015c4fa9c523aca"
+                ],
+                "securityGroups": [
+                    "sg-0f30b8d2a6d6b6a8a"
+                ],
+                "assignPublicIp": "ENABLED"
+            }
+        },
+        "healthCheckGracePeriodSeconds": 0,
+        "schedulingStrategy": "REPLICA",
+        "deploymentController": {
+            "type": "ECS"
+        },
+        "createdBy": "arn:aws:iam::140023362064:user/mesut",
+        "enableECSManagedTags": false,
+        "propagateTags": "NONE",
+        "enableExecuteCommand": false,
+        "availabilityZoneRebalancing": "ENABLED",
+        "resourceManagementType": "CUSTOMER"
+    }
+}
+(END)
+        "schedulingStrategy": "REPLICA",
+        "deploymentController": {
+            "type": "ECS"
+        },
+        "createdBy": "arn:aws:iam::140023362064:user/mesut",
+        "enableECSManagedTags": false,
+        "propagateTags": "NONE",
+        "enableExecuteCommand": false,
+        "availabilityZoneRebalancing": "ENABLED",
+        "resourceManagementType": "CUSTOMER"
+    }
+}
+(END)
+mesutbicer@ip-192-168-1-101 walmart-nestjs %

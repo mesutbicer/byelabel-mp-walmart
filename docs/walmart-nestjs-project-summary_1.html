@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walmart NestJS Migration - Proje Özeti & Altyapı Topolojisi</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface-2: #1a2235;
+    --border: #2a3a52;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.15);
+    --green: #10b981;
+    --green-glow: rgba(16, 185, 129, 0.15);
+    --orange: #f59e0b;
+    --orange-glow: rgba(245, 158, 11, 0.15);
+    --red: #ef4444;
+    --purple: #8b5cf6;
+    --purple-glow: rgba(139, 92, 246, 0.15);
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-muted: #64748b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  .noise {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 60px;
+    position: relative;
+  }
+
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--accent-glow);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: var(--accent);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  h1 {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    color: var(--text-dim);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* Status Bar */
+  .status-bar {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin: 40px 0;
+    flex-wrap: wrap;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot.orange { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 40px;
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Section */
+  .section {
+    margin-bottom: 40px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: var(--accent); }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .card h3 {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .card p {
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .tag.green { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+  .tag.orange { background: var(--orange-glow); color: var(--orange); border: 1px solid rgba(245,158,11,0.3); }
+  .tag.blue { background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(59,130,246,0.3); }
+  .tag.purple { background: var(--purple-glow); color: var(--purple); border: 1px solid rgba(139,92,246,0.3); }
+
+  /* Timeline */
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: linear-gradient(180deg, var(--accent), var(--green));
+    border-radius: 2px;
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 28px;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -29px;
+    top: 8px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+  }
+
+  .timeline-item.done::before {
+    background: var(--green);
+    border-color: var(--green);
+  }
+
+  .timeline-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .timeline-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .timeline-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* Topology */
+  .topology {
+    position: relative;
+    padding: 20px 0;
+  }
+
+  .topo-layer {
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  .topo-layer-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+
+  .topo-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .topo-node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    text-align: center;
+    min-width: 180px;
+    position: relative;
+    transition: all 0.2s;
+  }
+
+  .topo-node:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
+  }
+
+  .topo-node.highlight {
+    border-color: var(--green);
+    background: linear-gradient(135deg, var(--surface), rgba(16, 185, 129, 0.05));
+  }
+
+  .topo-node.csharp {
+    border-color: var(--orange);
+    border-style: dashed;
+    opacity: 0.6;
+  }
+
+  .topo-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+
+  .topo-name {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .topo-detail {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .topo-arrow {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 20px;
+    margin: 6px 0;
+    letter-spacing: 4px;
+  }
+
+  .topo-arrow span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    display: block;
+    letter-spacing: 0;
+  }
+
+  /* Flow Diagram */
+  .flow-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+
+  .flow-box .comment { color: var(--text-muted); }
+  .flow-box .highlight { color: var(--green); font-weight: 600; }
+  .flow-box .accent { color: var(--accent); }
+  .flow-box .warn { color: var(--orange); }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    h1 { font-size: 28px; }
+    .status-bar { gap: 16px; }
+  }
+
+  /* Resource Table */
+  .resource-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .resource-table th {
+    text-align: left;
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .resource-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(42, 58, 82, 0.5);
+    color: var(--text-dim);
+  }
+
+  .resource-table tr:hover td { color: var(--text); }
+
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">ByeLabel Infrastructure</div>
+    <h1>Walmart Marketplace API</h1>
+    <p class="subtitle">C# → NestJS Migrasyon Projesi & AWS ECS Deployment Özeti</p>
+
+    <div class="status-bar">
+      <div class="status-item"><div class="dot green"></div> NestJS Service: Active</div>
+      <div class="status-item"><div class="dot green"></div> Health Check: Healthy</div>
+      <div class="status-item"><div class="dot green"></div> Scheduled Jobs: Running</div>
+      <div class="status-item"><div class="dot green"></div> DNS: walmart.byelabel.internal</div>
+      <div class="status-item"><div class="dot orange"></div> C# Service: Parallel (Retire Bekliyor)</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('topology')">🏗️ Altyapı Topolojisi</button>
+    <button class="tab" onclick="switchTab('summary')">📋 Proje Özeti</button>
+    <button class="tab" onclick="switchTab('timeline')">📅 Zaman Çizelgesi</button>
+    <button class="tab" onclick="switchTab('resources')">🔧 AWS Kaynakları</button>
+  </div>
+
+  <!-- ===================== TOPOLOGY TAB ===================== -->
+  <div id="topology" class="tab-content active">
+
+    <div class="section">
+      <div class="section-title">İstek Akışı (Request Flow)</div>
+      <div class="flow-box">
+<span class="comment">// Kullanıcı veya dahili servis bir API çağrısı yapar</span>
+<br><br>
+<span class="accent">Client (VPN)</span> → <span class="purple" style="color:#8b5cf6">Route 53 DNS</span> → <span class="warn">Internal ALB</span> → <span class="highlight">NestJS Container</span> → <span class="accent">PostgreSQL (RDS)</span>
+<br><br>
+<span class="comment">// Detaylı akış:</span>
+<br>
+1. İstek gelir: <span class="accent">GET https://walmart.byelabel.internal/mp-walmart/api/Order/{accountId}/{storeId}/{date}</span>
+<br>
+2. <span style="color:#8b5cf6">Route 53</span> DNS çözümler: walmart.byelabel.internal → Internal ALB IP (10.0.22.67 / 10.0.25.210)
+<br>
+3. <span class="warn">ALB</span> path pattern'i eşleştirir: <span class="warn">/mp-walmart/*</span> → mp-walmart-tg Target Group'a yönlendirir
+<br>
+4. <span class="highlight">NestJS Middleware</span> prefix'i strip eder: <span class="warn">/mp-walmart</span>/api/Order/... → <span class="highlight">/api/Order/...</span>
+<br>
+5. <span class="highlight">NestJS Controller</span> isteği işler, <span class="accent">PostgreSQL</span>'den veri çeker
+<br>
+6. Response döner: <span class="highlight">200 OK</span> + JSON payload
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Altyapı Topoloji Diyagramı</div>
+
+      <div class="topology">
+
+        <!-- Layer 1: Client -->
+        <div class="topo-layer">
+          <div class="topo-layer-label">👤 Client Layer</div>
+          <div class="topo-row">
+            <div class="topo-node">
+              <div class="topo-icon">🌐</div>
+              <div class="topo-name">Internal Clients</div>
+              <div class="topo-detail">VPN üzerinden erişim<br>Swagger UI / API Calls<br>Diğer ByeLabel servisleri</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="topo-arrow">▼<span>HTTPS Request</span></div>
+
+        <!-- Layer 2: DNS -->
+        <div class="topo-layer">
+          <div class="topo-layer-label">📡 DNS Layer (Route 53)</div>
+          <div class="topo-row">
+            <div class="topo-node highlight" style="min-width: 500px;">
+              <div class="topo-icon">📡</div>
+              <div class="topo-name">Route 53 - Private Hosted Zone</div>
+              <div class="topo-detail">
+                Zone: <strong style="color:var(--text)">byelabel.internal</strong> (Private)<br>
+                Zone ID: Z00712722R9870ZSKU94N<br><br>
+                <strong style="color:var(--text)">A Record (Alias):</strong><br>
+                walmart.byelabel.internal → Internal ALB<br><br>
+                <strong style="color:var(--text)">Diğer Servisler:</strong><br>
+                amazon.byelabel.internal | ebay.byelabel.internal | etsy.byelabel.internal<br>
+                shopify.byelabel.internal | walmart-canada.byelabel.internal | woo-commerce.byelabel.internal<br><br>
+                <span style="color:var(--orange)">⚠ SSL Sertifikası: CN=byelabel.com (domain mismatch - internal kullanım için kabul edilebilir)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="topo-arrow">▼<span>Alias → ALB DNS</span></div>
+
+        <!-- Layer 3: Load Balancer -->
+        <div class="topo-layer">
+          <div class="topo-layer-label">⚖️ Load Balancing Layer</div>
+          <div class="topo-row">
+            <div class="topo-node" style="min-width: 500px;">
+              <div class="topo-icon">⚖️</div>
+              <div class="topo-name">Internal Application Load Balancer</div>
+              <div class="topo-detail">internal-byelabel-main-internal-lb-300788144.us-east-1.elb.amazonaws.com<br><br>
+                <strong style="color:var(--text)">Path-Based Routing Rules:</strong><br>
+                /mp-walmart/* → mp-walmart-tg (NestJS) ✅<br>
+                /mp-amazon/* → mp-amazon-tg<br>
+                /diğer-servisler/* → ilgili target group'lar
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="topo-arrow">▼<span>/mp-walmart/* → Target Group</span></div>
+
+        <!-- Layer 3: Target Group -->
+        <div class="topo-layer">
+          <div class="topo-layer-label">🎯 Target Group Layer</div>
+          <div class="topo-row">
+            <div class="topo-node highlight">
+              <div class="topo-icon">🎯</div>
+              <div class="topo-name">mp-walmart-tg</div>
+              <div class="topo-detail">Health Check: /health-check<br>Port: 8082<br>Protocol: HTTP<br>Deregistration Delay: 300s</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="topo-arrow">▼<span>Port 8082</span></div>
+
+        <!-- Layer 4: ECS -->
+        <div class="topo-layer">
+          <div class="topo-layer-label">🐳 Compute Layer (ECS Fargate)</div>
+          <div class="topo-row">
+            <div class="topo-node highlight" style="min-width: 340px;">
+              <div class="topo-icon">🟢</div>
+              <div class="topo-name">mp-walmart-service (NestJS)</div>
+              <div class="topo-detail">
+                Cluster: byelabel | Launch: Fargate<br>
+                Image: 140023362064.dkr.ecr.us-east-1.amazonaws.com/mp-walmart-service<br>
+                CPU: 256 | Memory: 512<br>
+                Port: 8082<br><br>
+                <strong style="color:var(--green)">Middleware:</strong> /mp-walmart prefix strip<br>
+                <strong style="color:var(--green)">Circuit Breaker:</strong> Enabled + Auto Rollback<br>
+                <strong style="color:var(--green)">Min Healthy:</strong> 100% | Max: 200%<br>
+                <strong style="color:var(--green)">Scheduled Jobs:</strong> Her 10 dk sipariş senkronizasyonu
+              </div>
+            </div>
+            <div class="topo-node csharp" style="min-width: 280px;">
+              <div class="topo-icon">⏳</div>
+              <div class="topo-name">C# Walmart Service (Eski)</div>
+              <div class="topo-detail">
+                Paralel çalışıyor<br>
+                Aynı veritabanını kullanıyor<br>
+                Retire edilecek<br><br>
+                <span style="color:var(--orange)">⚠ Scheduled jobs aktif</span><br>
+                <span style="color:var(--orange)">Çakışma riski yok</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="topo-arrow">▼<span>SSL Connection</span></div>
+
+        <!-- Layer 5: Database -->
+        <div class="topo-layer">
+          <div class="topo-layer-label">🗄️ Data Layer</div>
+          <div class="topo-row">
+            <div class="topo-node" style="min-width: 400px;">
+              <div class="topo-icon">🐘</div>
+              <div class="topo-name">Amazon RDS - PostgreSQL</div>
+              <div class="topo-detail">
+                Mevcut ByeLabel veritabanı<br>
+                SSL bağlantı zorunlu<br>
+                TypeORM entities ↔ C# Entity Framework birebir uyumlu<br><br>
+                <strong style="color:var(--text)">Tablolar:</strong> Users, Orders, OrderLines,<br>
+                OrderLineStatuses, Charges, ShippingInfos
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layer 6: External -->
+        <div class="topo-arrow">▼<span>HTTPS (OAuth2)</span></div>
+
+        <div class="topo-layer">
+          <div class="topo-layer-label">🌍 External Services</div>
+          <div class="topo-row">
+            <div class="topo-node">
+              <div class="topo-icon">🏪</div>
+              <div class="topo-name">Walmart Seller API</div>
+              <div class="topo-detail">marketplace.walmartapis.com<br>OAuth2 Token Auth<br>Sipariş çekme & kargo gönderimi</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Network -->
+    <div class="section">
+      <div class="section-title">Ağ Yapısı (Network)</div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>🔒 VPC & Subnet'ler</h3>
+          <p style="margin-top:8px">
+            <span class="mono">Subnet 1:</span> subnet-0ce9b75e525a22d92<br>
+            <span class="mono">Subnet 2:</span> subnet-08015c4fa9c523aca<br>
+            <span class="mono">Public IP:</span> Enabled (Fargate → ECR/RDS erişimi)<br>
+          </p>
+        </div>
+        <div class="card">
+          <h3>🛡️ Security Group</h3>
+          <p style="margin-top:8px">
+            <span class="mono">SG:</span> sg-0f30b8d2a6d6b6a8a<br>
+            <span class="mono">Inbound:</span> ALB → Port 8082<br>
+            <span class="mono">Outbound:</span> RDS, ECR, Walmart API<br>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deploy Flow -->
+    <div class="section">
+      <div class="section-title">Deploy Akışı</div>
+      <div class="flow-box">
+<span class="comment">// Tek komut ile deploy: ./deploy.sh</span>
+<br><br>
+<span class="accent">1. ECR Login</span> → AWS credentials ile registry kimlik doğrulama
+<br>
+<span class="accent">2. Docker Build</span> → linux/amd64 platformu, multi-stage build (builder + production)
+<br>
+<span class="accent">3. Tag & Push</span> → Unique tag (20260203-134430) + latest tag → ECR'a push
+<br>
+<span class="accent">4. Task Definition</span> → Yeni revision oluştur, image tag'ını güncelle
+<br>
+<span class="accent">5. ECS Deploy</span> → Service güncelle, rolling update başlat
+<br>
+<span class="accent">6. Takip</span> → Deployment durumu izle, timeout'ta uyarı ver
+<br><br>
+<span class="comment">// Güvenlik mekanizmaları:</span>
+<br>
+<span class="highlight">✓ Circuit Breaker:</span> Yeni task health check'ten geçemezse → otomatik rollback
+<br>
+<span class="highlight">✓ Min Healthy 100%:</span> Eski task yeni task sağlıklı olana kadar kapanmaz
+<br>
+<span class="highlight">✓ Max 200%:</span> Geçiş sırasında 2 task aynı anda çalışabilir (kesintisiz)
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SUMMARY TAB ===================== -->
+  <div id="summary" class="tab-content">
+
+    <div class="section">
+      <div class="section-title">Proje Kapsamı</div>
+      <div class="card">
+        <p>
+          Walmart Marketplace API entegrasyonu için mevcut <strong>C# (.NET)</strong> servisinin <strong>NestJS (Node.js/TypeScript)</strong> mimarisine 
+          tam uyumlu şekilde taşınması. Migrasyon, mevcut veritabanı şemasını, API endpoint yapısını, hata formatlarını ve iş mantığını 
+          birebir koruyarak gerçekleştirildi. Hedef: mevcut entegrasyonlarda sıfır kesinti ile geçiş.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Tamamlanan Aşamalar</div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h3>🔄 Kod Migrasyonu</h3>
+            <span class="tag green">TAMAMLANDI</span>
+          </div>
+          <p>
+            C# Entity Framework → TypeORM entity mapping'leri. Tüm controller, service, DTO, exception yapıları NestJS'e taşındı. 
+            152 doğrulama noktasında birebir uyumluluk sağlandı. Typo'lar dahil korundu (backward compatibility).
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>🧪 Test Suite</h3>
+            <span class="tag green">TAMAMLANDI</span>
+          </div>
+          <p>
+            90+ E2E test. Tüm controller endpoint'leri, hata senaryoları, veritabanı işlemleri ve iş mantığı kapsamlı test edildi.
+            Jest + Supertest framework'ü kullanıldı.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>🌐 İngilizceye Çeviri</h3>
+            <span class="tag green">TAMAMLANDI</span>
+          </div>
+          <p>
+            25+ kaynak dosyada Türkçe yorumlar, Swagger açıklamaları ve inline metinler İngilizce'ye çevrildi.
+            Uluslararası ekip uyumluluğu sağlandı.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>🐳 AWS ECS Deployment</h3>
+            <span class="tag green">TAMAMLANDI</span>
+          </div>
+          <p>
+            Docker containerization, ECR push, ECS Fargate task definition, ALB path-based routing, Target Group health check 
+            konfigürasyonu. Production ortamında çalışır durumda.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>🛡️ Deployment Güvenliği</h3>
+            <span class="tag green">TAMAMLANDI</span>
+          </div>
+          <p>
+            Circuit breaker + otomatik rollback aktif. Kesintisiz deployment (min healthy 100%). 
+            Unique tag'li deploy script (deploy.sh).
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>📡 ALB Routing</h3>
+            <span class="tag green">TAMAMLANDI</span>
+          </div>
+          <p>
+            /mp-walmart/* path pattern → NestJS servisine yönlendirme. Middleware ile prefix strip. 
+            C# servisiyle birebir endpoint uyumluluğu korundu. Swagger UI erişilebilir.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>📡 Route 53 DNS</h3>
+            <span class="tag green">TAMAMLANDI</span>
+          </div>
+          <p>
+            walmart.byelabel.internal → Internal ALB alias kaydı. Private hosted zone (byelabel.internal) üzerinden 
+            okunabilir URL ile erişim. VPN üzerinden tüm internal servislerle tutarlı naming convention.
+            SSL sertifikası CN=byelabel.com (internal kullanım için kabul edilebilir).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Bekleyen Adımlar</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h3>🔍 Response Karşılaştırma</h3>
+            <span class="tag orange">BEKLİYOR</span>
+          </div>
+          <p>NestJS ve C# servislerinin aynı endpoint'lere verdikleri yanıtların birebir karşılaştırılması.</p>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>🗑️ C# Service Retire</h3>
+            <span class="tag orange">BEKLİYOR</span>
+          </div>
+          <p>NestJS servisi doğrulandıktan sonra eski C# servisinin kapatılması.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Çözülen Kritik Sorunlar</div>
+
+      <div class="card">
+        <h3 style="color:var(--orange); margin-bottom: 12px;">🔧 Çözülen Sorunlar</h3>
+        <p>
+          <strong>1. PostgreSQL BigInt Bug:</strong> JavaScript Number tipi 64-bit integer'ları kaybediyordu. 
+          TypeORM'da bigint column'lar string olarak handle edildi.<br><br>
+          <strong>2. ALB Path Routing:</strong> Uygulama /health-check beklerken ALB /mp-walmart/health-check gönderiyordu. 
+          Önce global prefix eklendi, sonra middleware ile strip yaklaşımına geçildi (C# uyumluluğu için).<br><br>
+          <strong>3. Target Group Health Check:</strong> Path değişiklikleri Target Group health check konfigürasyonuyla senkronize edildi.<br><br>
+          <strong>4. Swagger Server URL:</strong> localhost:8082 yerine /mp-walmart relative path kullanılarak ALB üzerinden çalışması sağlandı.<br><br>
+          <strong>5. ECR Auth Expiry:</strong> Push sırasında 403 hatası. ECR token'ı yenilenerek çözüldü.<br><br>
+          <strong>6. Eski Image Cache:</strong> :latest tag ile ECS eski image'ı kullanmaya devam ediyordu. 
+          Unique tag (tarih bazlı) + yeni task definition revision ile çözüldü.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TIMELINE TAB ===================== -->
+  <div id="timeline" class="tab-content">
+
+    <div class="section">
+      <div class="section-title">Proje Zaman Çizelgesi</div>
+
+      <div class="timeline">
+        <div class="timeline-item done">
+          <div class="timeline-date">23 Ocak 2026</div>
+          <div class="timeline-title">C# → NestJS Kod Migrasyonu Başlangıcı</div>
+          <div class="timeline-desc">
+            C# kaynak kod analizi, TypeORM entity mapping'leri, service/controller/DTO yapılarının NestJS'e taşınması.
+            Veritabanı şema uyumluluğu (PascalCase tablolar, camelCase Asin tablosu istisnası). 
+            İş mantığı birebir korundu.
+          </div>
+        </div>
+
+        <div class="timeline-item done">
+          <div class="timeline-date">23 Ocak 2026</div>
+          <div class="timeline-title">Migrasyon Tamamlama & Doğrulama</div>
+          <div class="timeline-desc">
+            152 doğrulama noktasında katman katman karşılaştırma. Kritik bug fix'ler 
+            (timestamp hesaplama, HTTP 400 vs 404 error format uyumluluğu). Swagger UI preview oluşturuldu.
+          </div>
+        </div>
+
+        <div class="timeline-item done">
+          <div class="timeline-date">23 Ocak 2026</div>
+          <div class="timeline-title">E2E Test Suite & Dokümantasyon</div>
+          <div class="timeline-desc">
+            90+ E2E test yazıldı (Jest + Supertest). Türkçe kurulum ve kullanım kılavuzları hazırlandı.
+            Postman koleksiyonu oluşturuldu.
+          </div>
+        </div>
+
+        <div class="timeline-item done">
+          <div class="timeline-date">2 Şubat 2026</div>
+          <div class="timeline-title">Production Migration Planı</div>
+          <div class="timeline-desc">
+            6 aşamalı deployment stratejisi hazırlandı: Local → Staging → Validation → Shadow Mode → Production Cutover → Post-Validation.
+            TypeScript derleme hataları düzeltildi (8 hata). Tüm Türkçe içerik İngilizce'ye çevrildi (25+ dosya).
+          </div>
+        </div>
+
+        <div class="timeline-item done">
+          <div class="timeline-date">2 Şubat 2026 (Gece)</div>
+          <div class="timeline-title">AWS ECS Deployment</div>
+          <div class="timeline-desc">
+            Mevcut altyapı keşfi (ECS cluster, ALB, RDS). Docker multi-stage build. 
+            ECR repository oluşturma. ECS task definition & service. ALB target group & routing rules.
+            RDS SSL bağlantısı. İlk başarılı production deployment.
+          </div>
+        </div>
+
+        <div class="timeline-item done">
+          <div class="timeline-date">3 Şubat 2026</div>
+          <div class="timeline-title">ALB Path Routing & Prefix Çözümleri</div>
+          <div class="timeline-desc">
+            Global prefix ekleme → kaldırma → middleware ile strip yaklaşımı.
+            Target Group health check senkronizasyonu. Swagger server URL düzeltmesi.
+          </div>
+        </div>
+
+        <div class="timeline-item done">
+          <div class="timeline-date">3 Şubat 2026</div>
+          <div class="timeline-title">Deployment Güvenliği & Otomasyon</div>
+          <div class="timeline-desc">
+            Circuit breaker + otomatik rollback aktifleştirildi. Kesintisiz deployment (minHealthy 100%, max 200%).
+            deploy.sh script'i oluşturuldu (unique tag, task definition güncelleme, deployment takibi).
+          </div>
+        </div>
+
+        <div class="timeline-item done">
+          <div class="timeline-date">3 Şubat 2026</div>
+          <div class="timeline-title">Route 53 DNS Yapılandırması</div>
+          <div class="timeline-desc">
+            walmart.byelabel.internal private DNS kaydı doğrulandı (mevcut alias → Internal ALB).
+            Okunabilir URL ile erişim sağlandı. SSL sertifikası (CN=byelabel.com) domain mismatch 
+            uyarısı internal kullanım için kabul edildi. Tüm marketplace servisleriyle tutarlı naming convention.
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-date">Sonraki Adım</div>
+          <div class="timeline-title">Response Karşılaştırma & C# Retire</div>
+          <div class="timeline-desc">
+            NestJS ve C# endpoint response'larının karşılaştırılması. 
+            Doğrulama sonrası C# servisinin kapatılması.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== RESOURCES TAB ===================== -->
+  <div id="resources" class="tab-content">
+
+    <div class="section">
+      <div class="section-title">AWS Kaynakları</div>
+      <div class="card" style="overflow-x:auto;">
+        <table class="resource-table">
+          <thead>
+            <tr><th>Kaynak</th><th>İsim / ID</th><th>Detay</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>AWS Account</strong></td>
+              <td class="mono">140023362064</td>
+              <td>Region: us-east-1</td>
+            </tr>
+            <tr>
+              <td><strong>ECS Cluster</strong></td>
+              <td class="mono">byelabel</td>
+              <td>Fargate launch type</td>
+            </tr>
+            <tr>
+              <td><strong>ECS Service</strong></td>
+              <td class="mono">mp-walmart-service</td>
+              <td>Desired: 1 | CPU: 256 | Memory: 512</td>
+            </tr>
+            <tr>
+              <td><strong>Task Definition</strong></td>
+              <td class="mono">mp-walmart-service</td>
+              <td>Container port: 8082</td>
+            </tr>
+            <tr>
+              <td><strong>ECR Repository</strong></td>
+              <td class="mono">mp-walmart-service</td>
+              <td>140023362064.dkr.ecr.us-east-1.amazonaws.com</td>
+            </tr>
+            <tr>
+              <td><strong>Internal ALB</strong></td>
+              <td class="mono">byelabel-main-internal-lb</td>
+              <td>internal-byelabel-main-internal-lb-300788144.us-east-1.elb.amazonaws.com</td>
+            </tr>
+            <tr>
+              <td><strong>Target Group</strong></td>
+              <td class="mono">mp-walmart-tg</td>
+              <td>ARN: ...targetgroup/mp-walmart-tg/321b47f1173807de</td>
+            </tr>
+            <tr>
+              <td><strong>ALB Rule</strong></td>
+              <td class="mono">/mp-walmart/*</td>
+              <td>Path pattern → mp-walmart-tg</td>
+            </tr>
+            <tr>
+              <td><strong>Security Group</strong></td>
+              <td class="mono">sg-0f30b8d2a6d6b6a8a</td>
+              <td>ECS tasks için</td>
+            </tr>
+            <tr>
+              <td><strong>Subnets</strong></td>
+              <td class="mono">subnet-0ce9..., subnet-08015...</td>
+              <td>Public IP enabled</td>
+            </tr>
+            <tr>
+              <td><strong>CloudWatch Logs</strong></td>
+              <td class="mono">/ecs/mp-walmart-service</td>
+              <td>Container logları</td>
+            </tr>
+            <tr>
+              <td><strong>Route 53 Zone</strong></td>
+              <td class="mono">byelabel.internal (Private)</td>
+              <td>Zone ID: Z00712722R9870ZSKU94N</td>
+            </tr>
+            <tr>
+              <td><strong>DNS Record</strong></td>
+              <td class="mono">walmart.byelabel.internal</td>
+              <td>A Record (Alias) → Internal ALB</td>
+            </tr>
+            <tr>
+              <td><strong>SSL Sertifikası</strong></td>
+              <td class="mono">CN=byelabel.com (Amazon RSA 2048 M03)</td>
+              <td>Expire: 12 Nisan 2026 | Domain mismatch uyarısı (internal için OK)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Erişim URL'leri (VPN Gerekli)</div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>📚 Swagger UI</h3>
+          <p class="mono" style="margin-top:8px;word-break:break-all;color:var(--accent)">
+            https://walmart.byelabel.internal/mp-walmart/swagger
+          </p>
+          <p style="margin-top:6px;font-size:12px;color:var(--text-muted)">
+            Alternatif: https://internal-byelabel-main-internal-lb-300788144.us-east-1.elb.amazonaws.com/mp-walmart/swagger
+          </p>
+        </div>
+        <div class="card">
+          <h3>🏥 Health Check</h3>
+          <p class="mono" style="margin-top:8px;word-break:break-all;color:var(--green)">
+            https://walmart.byelabel.internal/mp-walmart/health-check
+          </p>
+          <p style="margin-top:6px;font-size:12px;color:var(--text-muted)">
+            Alternatif: https://internal-byelabel-main-internal-lb-300788144.us-east-1.elb.amazonaws.com/mp-walmart/health-check
+          </p>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:16px;">
+        <div class="card">
+          <h3>🔑 Auth API</h3>
+          <p class="mono" style="margin-top:8px;word-break:break-all;color:var(--accent)">
+            https://walmart.byelabel.internal/mp-walmart/api/Auth
+          </p>
+        </div>
+        <div class="card">
+          <h3>📦 Orders API</h3>
+          <p class="mono" style="margin-top:8px;word-break:break-all;color:var(--accent)">
+            https://walmart.byelabel.internal/mp-walmart/api/Order/{accountId}/{storeId}/{date}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Sık Kullanılan Komutlar</div>
+      <div class="flow-box">
+<span class="comment"># Deploy (tek komut)</span>
+<br>./deploy.sh
+<br><br>
+<span class="comment"># Log takibi</span>
+<br>aws logs tail /ecs/mp-walmart-service --since 5m --follow
+<br><br>
+<span class="comment"># Service durumu</span>
+<br>aws ecs describe-services --cluster byelabel --services mp-walmart-service \
+<br>&nbsp;&nbsp;--query 'services[0].{Running:runningCount,Desired:desiredCount}'
+<br><br>
+<span class="comment"># ECR login (token süresi dolduğunda)</span>
+<br>aws ecr get-login-password --region us-east-1 | docker login --username AWS \
+<br>&nbsp;&nbsp;--password-stdin 140023362064.dkr.ecr.us-east-1.amazonaws.com
+<br><br>
+<span class="comment"># Target Group health durumu</span>
+<br>aws elbv2 describe-target-health --target-group-arn \
+<br>&nbsp;&nbsp;arn:aws:elasticloadbalancing:us-east-1:140023362064:targetgroup/mp-walmart-tg/321b47f1173807de
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Deployment Konfigürasyonu</div>
+      <div class="grid-3">
+        <div class="card" style="text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:var(--green)">100%</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Min Healthy Percent</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px">Eski task her zaman ayakta</div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:var(--accent)">200%</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Max Percent</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px">2 task paralel çalışabilir</div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:var(--purple)">Auto</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Circuit Breaker Rollback</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px">Hatalı deploy otomatik geri alınır</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  
+  document.getElementById(tabId).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

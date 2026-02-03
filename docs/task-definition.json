@@ -1,0 +1,38 @@
+{
+  "family": "mp-walmart-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::140023362064:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "mp-walmart-service",
+      "image": "140023362064.dkr.ecr.us-east-1.amazonaws.com/mp-walmart-service:latest",
+      "portMappings": [
+        {
+          "containerPort": 8082,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "DB_HOST", "value": "byleabel-db-03-instance-1.ced2kgk8s660.us-east-1.rds.amazonaws.com" },
+        { "name": "DB_PORT", "value": "5432" },
+        { "name": "DB_USERNAME", "value": "postgres" },
+        { "name": "DB_PASSWORD", "value": "1Qaz2Wsx!!.." },
+        { "name": "DB_DATABASE", "value": "mp-walmart" },
+        { "name": "PORT", "value": "8082" },
+        { "name": "ENABLE_SCHEDULED_JOBS", "value": "true" },
+        { "name": "NODE_ENV", "value": "development" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mp-walmart-service",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

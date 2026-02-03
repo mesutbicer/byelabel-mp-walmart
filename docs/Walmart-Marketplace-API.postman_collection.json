@@ -1,0 +1,498 @@
+{
+	"info": {
+		"_postman_id": "walmart-nestjs-api-collection",
+		"name": "Walmart Marketplace API (NestJS)",
+		"description": "## Walmart Marketplace API Integration Service\n\nByeLabel altyapısında çalışan Walmart Marketplace API entegrasyon servisi.\n\n### Erişim\n- **Base URL:** `https://walmart.byelabel.internal/mp-walmart`\n- **Alternatif:** `https://internal-byelabel-main-internal-lb-300788144.us-east-1.elb.amazonaws.com/mp-walmart`\n- **Swagger UI:** `{{baseUrl}}/swagger`\n- **VPN bağlantısı gereklidir**\n\n### Modüller\n- **Auth** — Walmart hesap yönetimi (oluşturma, güncelleme, silme)\n- **Order** — Sipariş sorgulama ve kargo bildirimi\n- **Health** — Servis sağlık kontrolü\n\n### Notlar\n- SSL sertifikası `CN=byelabel.com` olduğu için Postman'de **SSL certificate verification** kapatılmalıdır.\n- Settings → General → SSL certificate verification → OFF",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://walmart.byelabel.internal/mp-walmart",
+			"type": "string"
+		},
+		{
+			"key": "accountId",
+			"value": "account-123",
+			"type": "string"
+		},
+		{
+			"key": "storeId",
+			"value": "store-456",
+			"type": "string"
+		},
+		{
+			"key": "clientId",
+			"value": "your-walmart-client-id",
+			"type": "string"
+		},
+		{
+			"key": "clientSecret",
+			"value": "your-walmart-client-secret",
+			"type": "string"
+		},
+		{
+			"key": "lastUpdateDate",
+			"value": "1704067200000",
+			"type": "string"
+		},
+		{
+			"key": "purchaseOrderId",
+			"value": "1234567890123",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health",
+			"description": "Servis sağlık kontrolü endpoint'leri.\n\nBu endpoint'ler servisin ayakta olup olmadığını ve log sisteminin çalışıp çalışmadığını kontrol eder.",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health-check",
+							"host": ["{{baseUrl}}"],
+							"path": ["health-check"]
+						},
+						"description": "Servisin ayakta olup olmadığını kontrol eder.\n\n**Beklenen Response:** `200 OK`\n\nBu endpoint aynı zamanda ALB Target Group health check'i tarafından kullanılır."
+					},
+					"response": [
+						{
+							"name": "Healthy",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/health-check",
+									"host": ["{{baseUrl}}"],
+									"path": ["health-check"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Log Test",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/log-test",
+							"host": ["{{baseUrl}}"],
+							"path": ["log-test"]
+						},
+						"description": "Log sisteminin düzgün çalışıp çalışmadığını test eder.\n\n**Beklenen Response:** `200 OK`\n\nCloudWatch loglarında test mesajı görünmelidir:\n```\naws logs tail /ecs/mp-walmart-service --since 1m\n```"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auth",
+			"description": "Walmart hesap yönetimi endpoint'leri.\n\nBu modül üzerinden Walmart Seller Partner hesapları oluşturulur, güncellenir ve silinir.\n\n### Akış\n1. Kullanıcı Walmart Partner Portal'dan Client ID ve Client Secret alır\n2. Bu bilgilerle `/api/Auth` endpoint'ine POST isteği yapılır\n3. Servis Walmart API'ye bağlanarak credentials'ları doğrular\n4. Başarılı ise kullanıcı veritabanına kaydedilir",
+			"item": [
+				{
+					"name": "Auth Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/health-check",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "health-check"]
+						},
+						"description": "Auth modülünün sağlık kontrolü.\n\n**Beklenen Response:** `200 OK`"
+					},
+					"response": []
+				},
+				{
+					"name": "Auth Log Test",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/log-test",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "log-test"]
+						},
+						"description": "Auth modülünün log test endpoint'i.\n\n**Beklenen Response:** `200 OK`"
+					},
+					"response": []
+				},
+				{
+					"name": "Create or Update Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accountId\": \"{{accountId}}\",\n    \"storeId\": \"{{storeId}}\",\n    \"clientId\": \"{{clientId}}\",\n    \"clientSecret\": \"{{clientSecret}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth"]
+						},
+						"description": "Yeni bir Walmart hesabı oluşturur veya mevcut hesabı günceller.\n\n### İş Akışı\n1. Walmart API'ye Client ID ve Client Secret ile bağlanır\n2. OAuth2 token alarak credentials'ları doğrular\n3. Kullanıcı bilgilerini veritabanına kaydeder\n\n### Senaryolar\n| Durum | Sonuç |\n|-------|-------|\n| Yeni kullanıcı | Yeni kayıt oluşturulur |\n| Aynı accountId + storeId | Credentials güncellenir |\n| Aynı accountId, farklı storeId | Store güncellenir |\n| Farklı accountId, aynı clientId | Hata döner (store başka kullanıcıya ait) |\n\n### Request Body\n- **accountId** (zorunlu): ByeLabel hesap ID'si\n- **storeId** (zorunlu): ByeLabel mağaza ID'si\n- **clientId** (zorunlu): Walmart Partner Portal'dan alınan Client ID\n- **clientSecret** (zorunlu): Walmart Partner Portal'dan alınan Client Secret"
+					},
+					"response": [
+						{
+							"name": "Success - Account Created",
+							"originalRequest": {
+								"method": "POST",
+								"header": [{"key": "Content-Type", "value": "application/json"}],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"accountId\": \"account-123\",\n    \"storeId\": \"store-456\",\n    \"clientId\": \"your-walmart-client-id\",\n    \"clientSecret\": \"your-walmart-client-secret\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/Auth",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Auth"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "{\n    \"Id\": 1,\n    \"UserId\": \"account-123\",\n    \"StoreId\": \"store-456\",\n    \"ClientId\": \"your-walmart-client-id\",\n    \"ClientSecret\": \"your-walmart-client-secret\",\n    \"IsDeleted\": false\n}"
+						},
+						{
+							"name": "Error - Store Belongs to Another User",
+							"originalRequest": {
+								"method": "POST",
+								"header": [{"key": "Content-Type", "value": "application/json"}],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"accountId\": \"different-account\",\n    \"storeId\": \"store-456\",\n    \"clientId\": \"existing-client-id\",\n    \"clientSecret\": \"existing-client-secret\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/Auth",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Auth"]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "{\n    \"name\": \"BaseException\",\n    \"message\": \"This store belongs to another user.\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Delete Account",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/{{accountId}}/{{storeId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Auth", "{{accountId}}", "{{storeId}}"]
+						},
+						"description": "Belirtilen Walmart hesabını soft-delete yapar.\n\n**ÖNEMLİ:** Bu işlem kullanıcıyı kalıcı olarak silmez, sadece `IsDeleted` flag'ini `true` yapar. Geçmiş siparişler ve veriler korunur.\n\n### Path Parametreleri\n- **accountId**: ByeLabel hesap ID'si\n- **storeId**: ByeLabel mağaza ID'si"
+					},
+					"response": [
+						{
+							"name": "Success - Account Deleted",
+							"originalRequest": {
+								"method": "DELETE",
+								"url": {
+									"raw": "{{baseUrl}}/api/Auth/account-123/store-456",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Auth", "account-123", "store-456"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "\"account-123\""
+						},
+						{
+							"name": "Error - User Not Found",
+							"originalRequest": {
+								"method": "DELETE",
+								"url": {
+									"raw": "{{baseUrl}}/api/Auth/non-existent/store-456",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Auth", "non-existent", "store-456"]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "{\n    \"name\": \"UserNotFoundException\",\n    \"message\": \"User Not Found.\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Order",
+			"description": "Sipariş yönetimi endpoint'leri.\n\nBu modül üzerinden Walmart siparişleri sorgulanır, senkronize edilir ve kargo bildirimi yapılır.\n\n### Sipariş Durumları\n| Durum | Açıklama |\n|-------|----------|\n| `awaiting` | Sipariş beklemede (Created, Acknowledged) |\n| `shipped` | Sipariş kargolandı |\n| `cancelled` | Sipariş iptal edildi |",
+			"item": [
+				{
+					"name": "Get Orders After Date",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/Order/{{accountId}}/{{storeId}}/{{lastUpdateDate}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Order", "{{accountId}}", "{{storeId}}", "{{lastUpdateDate}}"]
+						},
+						"description": "Belirtilen tarihten sonra güncellenen tüm siparişleri döner.\n\n### İlk Çağrı Davranışı\nKullanıcının hiç siparişi yoksa, otomatik olarak son 30 günlük siparişler Walmart API'den senkronize edilir.\n\n### Path Parametreleri\n- **accountId**: Kullanıcı hesap ID'si (UserId)\n- **storeId**: Walmart mağaza ID'si\n- **lastUpdateDate**: Son güncelleme tarihi (Unix timestamp - milisaniye)\n\n### Örnek Tarihler\n| Tarih | Timestamp |\n|-------|----------|\n| 1 Ocak 2024 | `1704067200000` |\n| 1 Şubat 2024 | `1706745600000` |\n| 1 Ocak 2025 | `1735689600000` |\n| 1 Şubat 2025 | `1738368000000` |"
+					},
+					"response": [
+						{
+							"name": "Success - Orders Returned",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/Order/user123/store456/1704067200000",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Order", "user123", "store456", "1704067200000"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "[\n    {\n        \"id\": \"123\",\n        \"created_at\": 1704067200000,\n        \"updated_at\": 1704153600000,\n        \"number\": \"PO123-CO456\",\n        \"dispatch_id\": \"PO123\",\n        \"status\": \"awaiting\",\n        \"tags\": [],\n        \"insurance\": null,\n        \"buyer_note\": \"\",\n        \"customer\": {\n            \"name\": \"John Doe\",\n            \"company\": \"\",\n            \"phone\": \"+1234567890\",\n            \"email\": \"customer@example.com\",\n            \"tax_number\": \"\",\n            \"country_code\": \"US\",\n            \"zip_code\": \"10001\",\n            \"state_code\": \"NY\",\n            \"city\": \"New York\",\n            \"street\": [\"123 Main St\", \"Apt 4B\"],\n            \"residential\": true\n        },\n        \"items\": [\n            {\n                \"number\": \"1\",\n                \"code\": \"SKU-12345\",\n                \"description\": \"Blue T-Shirt XL\",\n                \"image_url\": \"https://example.com/image.jpg\",\n                \"currency_code\": \"USD\",\n                \"unit_selling_price\": 29.99,\n                \"quantity\": 2,\n                \"total_selling_price\": 59.98,\n                \"dimensions\": {\n                    \"width\": 10,\n                    \"height\": 5,\n                    \"length\": 15,\n                    \"unit\": \"cm\"\n                },\n                \"weight\": {\n                    \"value\": 1.5,\n                    \"unit\": \"lb\"\n                }\n            }\n        ]\n    }\n]"
+						},
+						{
+							"name": "Error - User Not Found",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/Order/nonexistent/store456/1704067200000",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Order", "nonexistent", "store456", "1704067200000"]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "{\n    \"name\": \"UserNotFoundException\",\n    \"message\": \"User Not Found.\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Orders After Date (Alternative)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/Order/GetOrdersAfterDate/{{accountId}}/{{storeId}}/{{lastUpdateDate}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Order", "GetOrdersAfterDate", "{{accountId}}", "{{storeId}}", "{{lastUpdateDate}}"]
+						},
+						"description": "Belirtilen tarihten sonra güncellenen tüm siparişleri döner.\n\n**NOT:** Bu endpoint, üstteki `GET /api/Order/{accountId}/{storeId}/{lastUpdateDate}` ile aynı işlevi görür. C# backward compatibility için korunmuştur.\n\n### Sipariş Durumları\n- `awaiting`: Sipariş beklemede (Created, Acknowledged)\n- `shipped`: Sipariş kargolandı\n- `cancelled`: Sipariş iptal edildi\n\n### Path Parametreleri\n- **accountId**: Kullanıcı hesap ID'si (UserId)\n- **storeId**: Walmart mağaza ID'si\n- **lastUpdateDate**: Son güncelleme tarihi (Unix timestamp - milisaniye)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order by Purchase Order ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/Order/GetOrderFromApiByPurchaseOrderId/{{accountId}}/{{storeId}}/{{purchaseOrderId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Order", "GetOrderFromApiByPurchaseOrderId", "{{accountId}}", "{{storeId}}", "{{purchaseOrderId}}"]
+						},
+						"description": "Walmart API'den belirli bir siparişi Purchase Order ID ile çeker ve veritabanında günceller.\n\n### Kullanım Senaryoları\n- Belirli bir siparişin güncel durumunu almak istediğinizde\n- Sipariş detaylarını yenilemek istediğinizde\n\n### Path Parametreleri\n- **accountId**: Kullanıcı hesap ID'si (UserId)\n- **storeId**: Walmart mağaza ID'si\n- **purchaseOrderId**: Walmart tarafından atanan benzersiz sipariş numarası"
+					},
+					"response": [
+						{
+							"name": "Success - Order Returned",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/Order/GetOrderFromApiByPurchaseOrderId/user123/store456/1234567890123",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Order", "GetOrderFromApiByPurchaseOrderId", "user123", "store456", "1234567890123"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "{\n    \"id\": \"456\",\n    \"created_at\": 1704067200000,\n    \"updated_at\": 1704153600000,\n    \"number\": \"1234567890123-CO789\",\n    \"dispatch_id\": \"1234567890123\",\n    \"status\": \"awaiting\",\n    \"tags\": [],\n    \"insurance\": null,\n    \"buyer_note\": \"\",\n    \"customer\": {\n        \"name\": \"Jane Smith\",\n        \"company\": \"\",\n        \"phone\": \"+1987654321\",\n        \"email\": \"jane@example.com\",\n        \"tax_number\": \"\",\n        \"country_code\": \"US\",\n        \"zip_code\": \"90210\",\n        \"state_code\": \"CA\",\n        \"city\": \"Beverly Hills\",\n        \"street\": [\"456 Oak Ave\"],\n        \"residential\": true\n    },\n    \"items\": [\n        {\n            \"number\": \"1\",\n            \"code\": \"SKU-67890\",\n            \"description\": \"Red Sneakers Size 10\",\n            \"image_url\": \"https://example.com/sneakers.jpg\",\n            \"currency_code\": \"USD\",\n            \"unit_selling_price\": 89.99,\n            \"quantity\": 1,\n            \"total_selling_price\": 89.99,\n            \"dimensions\": {\n                \"width\": 30,\n                \"height\": 15,\n                \"length\": 35,\n                \"unit\": \"cm\"\n            },\n            \"weight\": {\n                \"value\": 2.0,\n                \"unit\": \"lb\"\n            }\n        }\n    ]\n}"
+						},
+						{
+							"name": "Error - User Not Found",
+							"originalRequest": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/Order/GetOrderFromApiByPurchaseOrderId/nonexistent/store456/1234567890123",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Order", "GetOrderFromApiByPurchaseOrderId", "nonexistent", "store456", "1234567890123"]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "{\n    \"name\": \"UserNotFoundException\",\n    \"message\": \"User Not Found.\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Dispatch Order (Known Carrier)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": \"{{purchaseOrderId}}\",\n    \"userId\": \"{{accountId}}\",\n    \"storeId\": \"{{storeId}}\",\n    \"shippingLines\": [\n        {\n            \"orderItemId\": \"1\",\n            \"orderItemQuantity\": 2,\n            \"shipDateTime\": 1704067200000,\n            \"carrierName\": \"UPS\",\n            \"methodCode\": \"Standard\",\n            \"trackingNumber\": \"1Z999AA10123456784\",\n            \"trackingURL\": \"\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Order/DispatchOrder",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Order", "DispatchOrder"]
+						},
+						"description": "Siparişi kargolandı olarak Walmart'a bildirir.\n\n### Bilinen Kargo Firması Kullanımı\nBilinen bir kargo firması kullanılıyorsa `carrierName` + `trackingNumber` zorunludur.\n\n### Desteklenen Kargo Firmaları (Bilinen)\nUPS, USPS, FedEx, DHL, Airborne, OnTrac, LaserShip, UPSMI, PILOT, ESTES, SAIA, FDS Express, Seko Worldwide, HIT Delivery, FEDEXSP, RL Carriers, China Post, YunExpress, 4PX, GLS, OSM Worldwide, FIRST MILE, CEVA, India Post, SF Express, Canada Post, Japan Post, Deutsche Post, Asendia\n\n### Kargo Yöntem Kodları\n| Kod | Açıklama |\n|-----|----------|\n| `Standard` | Standart kargo |\n| `Express` | Hızlı kargo |\n| `OneDay` | Bir günde teslimat |\n| `Freight` | Yük taşıma |\n| `WhiteGlove` | Beyaz eldiven teslimat |\n| `Value` | Ekonomik kargo |"
+					},
+					"response": [
+						{
+							"name": "Success - Order Dispatched",
+							"originalRequest": {
+								"method": "POST",
+								"header": [{"key": "Content-Type", "value": "application/json"}],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"orderId\": \"1234567890123\",\n    \"userId\": \"user123\",\n    \"storeId\": \"store456\",\n    \"shippingLines\": [\n        {\n            \"orderItemId\": \"1\",\n            \"orderItemQuantity\": 2,\n            \"shipDateTime\": 1704067200000,\n            \"carrierName\": \"UPS\",\n            \"methodCode\": \"Standard\",\n            \"trackingNumber\": \"1Z999AA10123456784\",\n            \"trackingURL\": \"\"\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/Order/DispatchOrder",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Order", "DispatchOrder"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"body": ""
+						},
+						{
+							"name": "Error - Missing Tracking Info",
+							"originalRequest": {
+								"method": "POST",
+								"header": [{"key": "Content-Type", "value": "application/json"}],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"orderId\": \"1234567890123\",\n    \"userId\": \"user123\",\n    \"storeId\": \"store456\",\n    \"shippingLines\": [\n        {\n            \"orderItemId\": \"1\",\n            \"orderItemQuantity\": 2,\n            \"shipDateTime\": 1704067200000,\n            \"carrierName\": \"UPS\",\n            \"methodCode\": \"Standard\",\n            \"trackingNumber\": \"\",\n            \"trackingURL\": \"\"\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/Order/DispatchOrder",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Order", "DispatchOrder"]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [{"key": "Content-Type", "value": "application/json"}],
+							"body": "{\n    \"name\": \"BaseException\",\n    \"message\": \"Known Carrier Name - TrackingNumber or Unknown Carrier Name - Tracking Url pairs are required.\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Dispatch Order (Unknown Carrier)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": \"{{purchaseOrderId}}\",\n    \"userId\": \"{{accountId}}\",\n    \"storeId\": \"{{storeId}}\",\n    \"shippingLines\": [\n        {\n            \"orderItemId\": \"1\",\n            \"orderItemQuantity\": 2,\n            \"shipDateTime\": 1704067200000,\n            \"carrierName\": \"MyLocalCarrier\",\n            \"methodCode\": \"Standard\",\n            \"trackingNumber\": \"\",\n            \"trackingURL\": \"https://mycarrier.com/track/ABC123\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Order/DispatchOrder",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "Order", "DispatchOrder"]
+						},
+						"description": "Siparişi bilinmeyen (custom) bir kargo firması ile kargolandı olarak Walmart'a bildirir.\n\n### Bilinmeyen Kargo Firması Kullanımı\nBilinmeyen bir kargo firması kullanılıyorsa `carrierName` + `trackingURL` zorunludur.\n\n**trackingNumber yerine trackingURL** gönderilmelidir."
+					},
+					"response": [
+						{
+							"name": "Success - Order Dispatched",
+							"originalRequest": {
+								"method": "POST",
+								"header": [{"key": "Content-Type", "value": "application/json"}],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"orderId\": \"1234567890123\",\n    \"userId\": \"user123\",\n    \"storeId\": \"store456\",\n    \"shippingLines\": [\n        {\n            \"orderItemId\": \"1\",\n            \"orderItemQuantity\": 2,\n            \"shipDateTime\": 1704067200000,\n            \"carrierName\": \"MyLocalCarrier\",\n            \"methodCode\": \"Standard\",\n            \"trackingNumber\": \"\",\n            \"trackingURL\": \"https://mycarrier.com/track/ABC123\"\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/Order/DispatchOrder",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "Order", "DispatchOrder"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"body": ""
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		}
+	]
+}

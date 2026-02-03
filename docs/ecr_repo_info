@@ -1,0 +1,18 @@
+mesutbicer@ip-192-168-1-101 walmart-nestjs % aws ecr create-repository --repository-name mp-walmart-service --region us-east-1
+
+{
+    "repository": {
+        "repositoryArn": "arn:aws:ecr:us-east-1:140023362064:repository/mp-walmart-service",
+        "registryId": "140023362064",
+        "repositoryName": "mp-walmart-service",
+        "repositoryUri": "140023362064.dkr.ecr.us-east-1.amazonaws.com/mp-walmart-service",
+        "createdAt": "2026-02-02T17:46:28.494000+03:00",
+        "imageTagMutability": "MUTABLE",
+        "imageScanningConfiguration": {
+            "scanOnPush": false
+        },
+        "encryptionConfiguration": {
+            "encryptionType": "AES256"
+        }
+    }
+}
