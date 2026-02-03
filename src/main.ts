@@ -21,6 +21,14 @@ async function bootstrap() {
     }),
   );
 
+  // Strip /mp-walmart prefix from ALB requests
+  app.use((req, res, next) => {
+    if (req.url.startsWith('/mp-walmart')) {
+      req.url = req.url.replace('/mp-walmart', '') || '/';
+    }
+    next();
+  });
+
   // Enable CORS
   app.enableCors();
 
@@ -58,15 +66,12 @@ Credentials required for Walmart API access:
 
 Walmart API enforces rate limiting. Refer to the Walmart Developer Portal for details.
     `)
-    .setVersion('1.0.0')
-    .addTag('Auth', 'User account management operations')
-    .addTag('Order', 'Order management operations')
-    .addTag('Health', 'Service health check')
-    .addServer(
-      isProd ? 'http://walmart.byelabel.internal' : `http://localhost:${port}`,
-      isProd ? 'Production Server' : 'Development Server',
-    )
-    .build();
+      .setVersion('1.0.0')
+      .addTag('Auth', 'User account management operations')
+      .addTag('Order', 'Order management operations')
+      .addTag('Health', 'Service health check')
+      .addServer('/mp-walmart', 'Current Server')
+      .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('swagger', app, document, {

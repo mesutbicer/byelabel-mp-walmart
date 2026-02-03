@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci --only=production=false
+RUN npm ci
 
 # Copy source and build
 COPY . .
@@ -48,4 +48,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start the application
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
+

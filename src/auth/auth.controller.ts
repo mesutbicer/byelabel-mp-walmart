@@ -24,6 +24,7 @@ import {
   UserNotFoundException,
   BaseException,
 } from '../common/exceptions/custom-exceptions';
+import { UserResponseDTO } from '../common/dto/user-response.dto';
 
 /**
  * AuthController - User management endpoints
@@ -38,43 +39,43 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
-  /**
-   * Health check endpoint
-   * 
-   * NOTE: Defined as /health-check in the C# project.
-   * Kept here for backward compatibility.
-   */
-  @Get('/health-check')
-  @ApiOperation({ 
-    summary: 'Health Check',
-    description: 'Checks whether the service is up and running.',
-  })
-  @ApiResponse({ status: 200, description: 'Service is healthy' })
-  @ApiResponse({ status: 400, description: 'Service error' })
-  healthCheck(): void {
-    // Returns 200 OK
-  }
+  // /**
+  //  * Health check endpoint
+  //  *
+  //  * NOTE: Defined as /health-check in the C# project.
+  //  * Kept here for backward compatibility.
+  //  */
+  // @Get('/health-check')
+  // @ApiOperation({
+  //   summary: 'Health Check',
+  //   description: 'Checks whether the service is up and running.',
+  // })
+  // @ApiResponse({ status: 200, description: 'Service is healthy' })
+  // @ApiResponse({ status: 400, description: 'Service error' })
+  // healthCheck(): void {
+  //   // Returns 200 OK
+  // }
 
-  /**
-   * Log test endpoint
-   */
-  @Get('/log-test')
-  @ApiOperation({ 
-    summary: 'Log Test',
-    description: 'Tests the logging system.',
-  })
-  @ApiResponse({ status: 200, description: 'Log test successful' })
-  @ApiResponse({ status: 400, description: 'Log test failed' })
-  async logTest(): Promise<void> {
-    try {
-      this.logger.log('Health Check Inf');
-      this.logger.warn('Health Check Warning');
-      this.logger.error('Health Check Error');
-      await this.authService.logTest();
-    } catch (error) {
-      throw new BaseException(error.message);
-    }
-  }
+  // /**
+  //  * Log test endpoint
+  //  */
+  // @Get('/log-test')
+  // @ApiOperation({
+  //   summary: 'Log Test',
+  //   description: 'Tests the logging system.',
+  // })
+  // @ApiResponse({ status: 200, description: 'Log test successful' })
+  // @ApiResponse({ status: 400, description: 'Log test failed' })
+  // async logTest(): Promise<void> {
+  //   try {
+  //     this.logger.log('Health Check Inf');
+  //     this.logger.warn('Health Check Warning');
+  //     this.logger.error('Health Check Error');
+  //     await this.authService.logTest();
+  //   } catch (error) {
+  //     throw new BaseException(error.message);
+  //   }
+  // }
 
   /**
    * Creates a new Walmart account or updates an existing one
@@ -97,23 +98,30 @@ export class AuthController {
 - Different accountId, same clientId: Returns error (store belongs to another user)`,
   })
   @ApiBody({ type: NewAccountDTO })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Account successfully created/updated',
-    type: User,
+    type: UserResponseDTO,
   })
   @ApiResponse({ 
     status: 400, 
     description: 'Invalid credentials or store belongs to another user',
   })
-  async createNewAccount(@Body() newAccount: NewAccountDTO): Promise<User> {
+  async createNewAccount(@Body() newAccount: NewAccountDTO): Promise<UserResponseDTO> {
     try {
       const payload = JSON.stringify(newAccount);
       this.logger.log(`CreateNewAccount Request: ${payload}`);
-      return await this.authService.createOrUpdateUser(newAccount);
+      const user = await this.authService.createOrUpdateUser(newAccount);
+      return {
+        id: user.Id,
+        userId: user.UserId,
+        storeId: user.StoreId,
+        clientId: user.ClientId,
+        clientSecret: user.ClientSecret,
+        isDeleted: user.IsDeleted,
+      };
     } catch (error) {
       this.logger.error(`CreateNewAccount. Error: ${error.message}`);
-      // C# code returns only e.Message string for this endpoint (not BaseException)
       throw new BadRequestException(error.message);
     }
   }
